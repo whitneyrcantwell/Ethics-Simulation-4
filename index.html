@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Manager — Ethics Simulation 4</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&display=swap');
+
+  :root {
+    --red:      #9B2335;
+    --red-dark: #6e1a26;
+    --red-glow: rgba(155,35,53,0.15);
+    --bg:       #0f0e0d;
+    --surface:  #1a1817;
+    --card:     #201e1c;
+    --border:   #2e2b28;
+    --text:     #ede8e1;
+    --muted:    #8a847b;
+    --warm:     #c4bfb7;
+    --gold:     #c9a84c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Source Sans 3', sans-serif; min-height: 100vh; }
+
+  #progress-wrap { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--border); z-index: 100; }
+  #progress-bar  { height: 100%; width: 0%; background: linear-gradient(90deg, var(--red-dark), var(--red)); transition: width 0.4s ease; }
+
+  .shell { max-width: 720px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* ── HEADER ── */
+  .sim-header { text-align: center; padding: 56px 24px 40px; }
+  .unit-label  { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--red); font-weight: 700; margin-bottom: 14px; }
+  .sim-title   { font-family: 'Playfair Display', Georgia, serif; font-size: 2.8rem; font-weight: 700; line-height: 1.1; color: var(--text); }
+  .sim-sub     { font-size: 15px; color: var(--muted); font-style: italic; margin-top: 10px; }
+  .divider     { width: 48px; height: 2px; background: var(--red); margin: 20px auto; }
+
+  /* ── CONTINUITY BADGE ── */
+  .continuity-badge   { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; margin: 0 auto 40px; max-width: 560px; display: none; }
+  .continuity-badge p { font-size: 14px; color: var(--warm); line-height: 1.6; margin: 0; }
+  .continuity-badge strong { color: var(--text); }
+
+  /* ── CODE INPUT ── */
+  .code-section   { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 28px 32px; margin-bottom: 36px; text-align: center; }
+  .code-section p { font-size: 15px; color: var(--warm); margin-bottom: 16px; line-height: 1.6; }
+  .code-input     { background: var(--card); border: 1px solid var(--border); color: var(--text); font-family: 'Source Sans 3', monospace; font-size: 15px; padding: 12px 18px; border-radius: 6px; width: 100%; max-width: 300px; text-align: center; letter-spacing: 0.08em; margin-bottom: 14px; outline: none; }
+  .code-input:focus { border-color: var(--red); }
+  .code-btn   { background: var(--red); color: #fff; border: none; border-radius: 6px; padding: 12px 28px; font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; transition: background 0.2s; }
+  .code-btn:hover { background: var(--red-dark); }
+  .skip-link  { display: block; font-size: 13px; color: var(--muted); margin-top: 12px; cursor: pointer; text-decoration: underline; }
+
+  /* ── BRANCH TAG (new) ── */
+  .branch-tag        { background: rgba(201,168,76,0.07); border: 1px solid rgba(201,168,76,0.28); border-radius: 6px; padding: 13px 18px; margin-bottom: 22px; font-size: 13px; color: var(--gold); line-height: 1.65; }
+  .branch-tag strong { color: var(--gold); }
+
+  /* ── SCENE CONTAINER ── */
+  #scene-container { animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  .scene-num   { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--red); font-weight: 700; margin-bottom: 16px; }
+  .scene-title { font-family: 'Playfair Display', Georgia, serif; font-size: 1.7rem; font-weight: 700; color: var(--text); line-height: 1.2; margin-bottom: 20px; }
+
+  .context-block   { background: var(--surface); border-left: 3px solid var(--red); border-radius: 0 8px 8px 0; padding: 20px 24px; margin-bottom: 24px; }
+  .context-block p { font-size: 15px; color: var(--warm); line-height: 1.8; margin: 0; }
+  .context-block p + p { margin-top: 12px; }
+
+  .decision-block  { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 22px 24px; margin-bottom: 20px; }
+  .decision-label  { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 12px; }
+  .decision-text   { font-family: 'Playfair Display', Georgia, serif; font-size: 1.1rem; font-style: italic; color: var(--text); line-height: 1.6; margin-bottom: 20px; }
+
+  .choice-btn      { display: block; width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 14.5px; font-family: 'Source Sans 3', sans-serif; padding: 16px 20px; margin-bottom: 10px; border-radius: 6px; cursor: pointer; text-align: left; line-height: 1.5; transition: all 0.2s; position: relative; }
+  .choice-btn:hover { border-color: var(--red); background: rgba(155,35,53,0.08); }
+  .choice-btn.selected { border-color: var(--red); background: rgba(155,35,53,0.12); }
+  .choice-btn.selected::after { content: '✓'; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--red); font-size: 18px; font-weight: 700; }
+  .choice-btn:disabled { opacity: 0.5; cursor: default; }
+  .choice-label    { font-weight: 700; color: var(--red); margin-right: 8px; font-size: 13px; letter-spacing: 0.05em; }
+
+  .confirm-btn       { background: var(--red); color: #fff; border: none; border-radius: 6px; padding: 14px 32px; font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; transition: background 0.2s; margin-top: 8px; display: none; }
+  .confirm-btn:hover { background: var(--red-dark); }
+  .confirm-btn.show  { display: inline-block; }
+
+  .reflection        { background: rgba(155,35,53,0.08); border: 1px solid rgba(155,35,53,0.3); border-radius: 8px; padding: 22px 24px; margin-top: 20px; display: none; }
+  .reflection.show   { display: block; animation: fadeIn 0.3s ease; }
+  .reflection-label  { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--red); font-weight: 700; margin-bottom: 10px; }
+  .reflection p      { font-size: 14.5px; color: var(--warm); line-height: 1.75; margin: 0; }
+  .reflection p + p  { margin-top: 10px; }
+
+  .next-btn       { background: transparent; border: 1px solid var(--red); color: var(--red); border-radius: 6px; padding: 12px 28px; font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; margin-top: 20px; transition: all 0.2s; }
+  .next-btn:hover { background: var(--red); color: #fff; }
+
+  /* ── CERTIFICATE ── */
+  .cert-screen        { display: none; }
+  .cert-screen.active { display: block; animation: fadeIn 0.4s ease; }
+  .cert-box    { background: var(--surface); border: 2px solid var(--red); border-radius: 12px; padding: 40px; text-align: center; margin: 40px 0; }
+  .cert-title  { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--text); margin-bottom: 8px; }
+  .cert-sub    { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
+  .cert-code   { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px 24px; display: inline-block; margin-bottom: 24px; }
+  .cert-code-text     { font-family: 'Source Sans 3', monospace; font-size: 1.4rem; font-weight: 700; color: var(--red); letter-spacing: 0.15em; }
+  .cert-instructions  { font-size: 14px; color: var(--warm); line-height: 1.7; max-width: 480px; margin: 0 auto 24px; }
+  .copy-btn       { background: var(--red); color: #fff; border: none; border-radius: 6px; padding: 12px 28px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+  .copy-btn:hover { background: var(--red-dark); }
+
+  .summary-table     { width: 100%; border-collapse: collapse; margin: 28px 0; font-size: 14px; }
+  .summary-table th  { background: var(--card); color: var(--warm); text-align: left; padding: 10px 14px; border: 1px solid var(--border); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .summary-table td  { padding: 10px 14px; border: 1px solid var(--border); color: var(--text); vertical-align: top; }
+  .summary-table tr:nth-child(even) td { background: rgba(255,255,255,0.03); }
+</style>
+</head>
+<body>
+<div id="progress-wrap"><div id="progress-bar"></div></div>
+
+<div class="sim-header">
+  <div class="unit-label">Ethics Simulation 4 &nbsp;&bull;&nbsp; The Line: Business Ethics</div>
+  <div class="sim-title">The Manager</div>
+  <div class="sim-sub">Alex Rivera — Mid-Level Manager, StepUp Athletic Wear</div>
+  <div class="divider"></div>
+  <p style="font-size:14px;color:var(--muted);max-width:500px;margin:0 auto;line-height:1.7;">You've been with StepUp for three years. The interview, the early stumbles, the Vietnam expansion — all behind you now. You have a team. You have a title. And today, you have four decisions waiting on your desk.</p>
+</div>
+
+<div class="shell">
+
+  <!-- CODE ENTRY -->
+  <div class="code-section" id="code-section">
+    <p><strong>Enter your Simulation 3 code</strong> to carry Alex's history forward.<br>Your past decisions shaped who you are as a manager.</p>
+    <input type="text" class="code-input" id="sim3-code" placeholder="SIM3-AR-XXXX-XX-XXXX" maxlength="22">
+    <br><button class="code-btn" onclick="loadHistory()">Load My History</button>
+    <span class="skip-link" onclick="skipHistory()">Skip — start fresh</span>
+  </div>
+
+  <!-- CONTINUITY BADGE -->
+  <div class="continuity-badge" id="continuity-badge">
+    <p id="continuity-text"></p>
+  </div>
+
+  <!-- DYNAMIC SCENE CONTAINER -->
+  <div id="scene-container"></div>
+
+  <!-- CERTIFICATE -->
+  <div class="cert-screen" id="certificate">
+    <div class="cert-box">
+      <div class="cert-title">Simulation Complete</div>
+      <div class="cert-sub">Alex Rivera &mdash; The Manager &mdash; Ethics Simulation 4</div>
+      <div class="cert-code">
+        <div class="cert-code-text" id="cert-code-display">SIM4-AR-XXXX</div>
+      </div>
+      <div class="cert-instructions">Copy this code and paste it into the <strong>final line of your Discussion 4 post</strong>. It is your proof of completion and required for full credit.</div>
+      <button class="copy-btn" onclick="copyCode()">Copy Code</button>
+    </div>
+    <h2 style="font-family:'Playfair Display',serif;font-size:1.35rem;color:var(--text);margin-bottom:16px;">Your Decisions This Unit</h2>
+    <table class="summary-table" id="summary-table">
+      <tr><th>Decision</th><th>You Chose</th><th>What It Signals</th></tr>
+    </table>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;margin-top:28px;text-align:center;">
+      <p style="font-size:13px;color:var(--muted);margin:0 0 8px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;">Next: Discussion 4</p>
+      <p style="font-size:15px;color:var(--warm);line-height:1.7;margin:0;">Go to <strong>Discussion 4: Drawing the Line</strong>. Choose the decision that was hardest for you and explain why — using your code above to verify completion.</p>
+    </div>
+  </div>
+
+</div><!-- /.shell -->
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const state = {
+  choices:  { 1: null, 2: null, 3: null, 4: null },
+  variants: { 2: null, 3: null, 4: null }
+};
+
+// ─── ALL SCENE DATA ──────────────────────────────────────────────────────────
+const SCENES = {
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // SCENE 1  —  always the same
+  // ════════════════════════════════════════════════════════════════════════════
+  1: {
+    num:     'Decision 1 of 4',
+    title:   'The Complaint',
+    branch:  null,
+    context: [
+      'Monday morning. Your email shows a message from Jordan, a junior analyst on your team, sent at 10:47 PM on Friday. Subject line: <em>"Something I need to tell you."</em>',
+      'Jordan describes a pattern of comments from Marcus, your highest-performing senior rep — comments about appearance, repeated "joking" suggestions that Jordan "can\'t handle" certain client accounts, and a moment two weeks ago in the break room that Jordan calls "the worst one yet." Jordan asks you to keep it confidential if possible.',
+      'Marcus has delivered record numbers this quarter. He\'s up for a team lead promotion you\'ve been championing. You\'ve never seen the behavior Jordan describes — but you also weren\'t there.'
+    ],
+    question: 'How do you respond to Jordan\'s complaint?',
+    choices: [
+      { key: 'A', text: 'Forward the complaint to HR immediately and let the formal process run. You document everything and don\'t speak to Marcus until HR advises you.' },
+      { key: 'B', text: 'Speak with Jordan first to get more detail, then escalate to HR promptly — giving Jordan a voice before the formal process begins.' },
+      { key: 'C', text: 'Talk to Marcus informally as a "heads up," frame it as a misunderstanding, and ask Jordan to give things some time to improve.' },
+      { key: 'D', text: 'Document what Jordan told you but take no immediate action — wait to see if there are more complaints, or if Jordan follows up.' }
+    ],
+    reflections: {
+      A: `<p>Escalating immediately is by the book — and the safest path for the organization. HR processes exist for exactly this reason, and they protect both Jordan and you from accusations of mishandling. The downside: Jordan asked for confidentiality. Escalating without a prior conversation may feel like a betrayal of that trust.</p>
+          <p><strong>What carries forward:</strong> HR has the complaint. Marcus is under formal review and his promotion is on hold. Your decisive action protected Jordan — and set a standard your team won't forget.</p>`,
+      B: `<p>Gathering more detail before escalating gave Jordan a voice in the process. The risk is timing — the conversation with Marcus needs to wait for HR. This approach requires discipline: document everything, escalate promptly, and don't let "handling it at your level" become a reason nothing gets handled at all.</p>
+          <p><strong>What carries forward:</strong> Jordan was heard first. HR has the complaint. The process is running — and you're on record as someone who acted.</p>`,
+      C: `<p>Framing this as a misunderstanding and asking Jordan to "give it time" is the most ethically dangerous choice here. It minimizes the complaint, places the burden on the person who came forward, and protects the accused. Studies on workplace harassment consistently show this is how complaints get buried. Jordan's experience does not become less real because Marcus delivers good numbers.</p>
+          <p><strong>What carries forward:</strong> Jordan's complaint went unaddressed at your level. What happens next is no longer fully in your control.</p>`,
+      D: `<p>Waiting for more evidence before acting puts institutional risk tolerance above Jordan's wellbeing. A complaint was made. Documented inaction is still a decision — and if something escalates later, your documentation of "I waited" will not protect you. The obligation here is to act, not to wait for a pattern to become undeniable.</p>
+          <p><strong>What carries forward:</strong> Jordan's complaint is sitting in your notes. The next move is Jordan's — and it's out of your hands now.</p>`
+    }
+  },
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // SCENE 2  —  branches on Scene 1 choice
+  //   clear   : chose A or B (escalated; HR has it)
+  //   fallout : chose C or D (didn't act; Jordan went to HR directly)
+  // ════════════════════════════════════════════════════════════════════════════
+  2: {
+
+    clear: {
+      num:   'Decision 2 of 4',
+      title: 'Two Hires, One Budget',
+      branch: '<strong>Carrying forward:</strong> You escalated Jordan\'s complaint. HR has it. Marcus is under formal review and his promotion is on hold. Your team knows something is happening — but not the details. You\'ve done what you could. Now you have two people to hire.',
+      context: [
+        'You\'re hiring two account coordinators. Both candidates have equal credentials — same degree, same GPA, similar experience. The budget allows you to set their starting salaries independently, within a $48,000–$58,000 range.',
+        'Candidate 1 is Taylor, who came in confident, negotiated directly, and asked for $56,000. Candidate 2 is Avery, who said they were "flexible on salary" and named $50,000 as their expectation.',
+        'You know from industry research that women are statistically less likely to negotiate aggressively — and statistically more likely to be Avery than Taylor. Your HR contact reminds you: "Pay what they ask for. It\'s standard."'
+      ],
+      question: 'What do you offer?',
+      choices: [
+        { key: 'A', text: 'Offer Taylor $56,000 and Avery $50,000. They named their numbers; you\'re respecting what they asked for.' },
+        { key: 'B', text: 'Offer both candidates $53,000 — the midpoint. Equal qualifications should mean equal starting pay, regardless of who negotiated harder.' },
+        { key: 'C', text: 'Offer Taylor $56,000 and Avery $54,000 — close enough. You meet Taylor\'s ask and give Avery more than they expected.' },
+        { key: 'D', text: 'Offer both candidates $56,000. If you can pay one person that much for this role, you can pay both — and you won\'t be the manager who starts a pay gap.' }
+      ],
+      reflections: {
+        A: `<p>You followed what they asked for — but the Lilly Ledbetter case shows exactly how this plays out over time. Small pay gaps at hire compound into large ones over years. If Avery\'s lower ask was shaped by implicit bias, then "I paid what they asked" becomes cover for a gap you could have closed. Taylor didn\'t earn more. Taylor just knew to ask for more.</p>
+            <p><strong>What carries forward:</strong> A $6,000 gap is locked in on day one. When Avery and Taylor compare notes, that number will be the story.</p>`,
+        B: `<p>Equal pay for equal qualifications sends a clear signal. Taylor may feel the negotiation didn\'t pay off — but stronger negotiation didn\'t make Taylor a better candidate. You refused to reward a skill unrelated to the job, one that historically advantages some groups over others. The equity cost of this decision is zero.</p>
+            <p><strong>What carries forward:</strong> Taylor and Avery start on equal footing. The team has one fewer fracture to navigate.</p>`,
+        C: `<p>This compromise feels fair but isn\'t. Avery still makes $2,000 less than Taylor for the same role on day one. That gap won\'t close on its own — it will compound. "More than they expected" is not the same as "equal to what the role is worth." If Avery ever compares notes with Taylor, the gap is the story, not the generosity.</p>
+            <p><strong>What carries forward:</strong> A smaller gap is still a gap. Whether it stays quiet depends on how well your team keeps salaries to themselves.</p>`,
+        D: `<p>Paying both at the high end eliminates the gap at the source. Equal qualifications, equal pay. You set a rate for the role and applied it consistently. The cost of doing this now is far lower than the cost of litigating it later — that was Lilly Ledbetter\'s entire case.</p>
+            <p><strong>What carries forward:</strong> Both hires start on equal ground, at the top of the range. That\'s a defensible policy, not a case-by-case call.</p>`
+      }
+    },
+
+    fallout: {
+      num:   'Decision 2 of 4',
+      title: 'Two Hires, One Cloud',
+      branch: '<strong>Carrying forward:</strong> Jordan didn\'t wait. By Monday morning, HR already had a complaint — one Jordan filed directly, without you. A formal inquiry is sitting in your inbox asking why you didn\'t act. The Marcus situation is now official, and you have a meeting with HR tomorrow.',
+      context: [
+        'Your inbox has an HR notice waiting before you even open the hiring files. The message landed at 8:02 AM: <em>"We\'ve received a complaint regarding a member of your team. We understand you may have received related communications. Please contact us before end of business today."</em>',
+        'Jordan didn\'t wait for you to do something. They went around you. The formal inquiry is about your non-response — and it\'s sitting next to the two hiring offers you need to finalize today.',
+        'Both candidates are equally qualified. Budget allows $48,000–$58,000. Taylor negotiated directly to $56,000. Avery said they were flexible and named $50,000. Your HR contact\'s standing advice: "Pay what they ask for." The hiring files are open. The inquiry is one tab over.'
+      ],
+      question: 'What do you offer — under everything that\'s happening today?',
+      choices: [
+        { key: 'A', text: 'Offer Taylor $56,000 and Avery $50,000. You\'re distracted and under pressure — pay what they asked and move on.' },
+        { key: 'B', text: 'Offer both $53,000. Even on a hard day, equal qualifications should mean equal pay.' },
+        { key: 'C', text: 'Offer Taylor $56,000 and Avery $54,000. Under the circumstances, you\'re trying to close the gap — even if not perfectly.' },
+        { key: 'D', text: 'Offer both $56,000. One clear rate for the role, applied to everyone. You can\'t afford another gap to manage.' }
+      ],
+      reflections: {
+        A: `<p>Distraction is one of the most honest reasons pay gaps form — not malice, but overwhelm. You were under real pressure today. But Avery will have no idea the day you set their salary was the worst of your week. The gap is locked in regardless of your state of mind when you created it. You now have two compounding problems that may outlast this Monday.</p>
+            <p><strong>What carries forward:</strong> A $6,000 gap, set under pressure, during the week HR started asking questions about your judgment.</p>`,
+        B: `<p>Under pressure, you still chose equity. That matters more than it looks from the outside. The HR inquiry will take time to resolve, but this hiring decision won\'t compound into a lawsuit in twenty years. Equal pay on a hard day is still equal pay.</p>
+            <p><strong>What carries forward:</strong> A clean hiring decision, made on a messy day. The HR situation is separate — but at least it isn\'t joined by a pay gap.</p>`,
+        C: `<p>Under the circumstances, $54K for Avery shows more intentionality than defaulting to the ask. The gap is smaller — but it\'s still there. As Avery and Taylor onboard and get to know each other, the $2,000 difference will eventually surface. Whether you can defend the reasoning is the question.</p>
+            <p><strong>What carries forward:</strong> A partial gap, made under pressure, during the week HR was already scrutinizing your decisions.</p>`,
+        D: `<p>On the worst day of your recent week, you chose the cleanest path on hiring. Whatever happens with the inquiry, this decision is defensible: one rate, two equally qualified people, full stop. You set a policy, not a case-by-case exception. That\'s the only answer that holds up under scrutiny.</p>
+            <p><strong>What carries forward:</strong> Equal pay, documentable policy reasoning, and one less variable for HR to examine.</p>`
+      }
+    }
+  },
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // SCENE 3  —  branches on Scene 2 choice
+  //   united   : chose B or D (equal pay; team is stable)
+  //   fractured: chose A or C (pay gap; Avery found out)
+  // ════════════════════════════════════════════════════════════════════════════
+  3: {
+
+    united: {
+      num:   'Decision 3 of 4',
+      title: 'Eyes on the Team',
+      branch: '<strong>Carrying forward:</strong> Taylor and Avery are both onboarding on equal footing. The pay decision set a tone of fairness. Your team is cohesive going into what comes next.',
+      context: [
+        'IT sends an all-managers notice: StepUp is rolling out WorkWatch, a remote monitoring platform, for all departments by end of quarter. It will log keystrokes, application usage, and take random screenshots every 15 minutes.',
+        'Your team has been fully remote since the pandemic. They\'ve delivered every quarter. You\'ve never had a performance problem. One team member, Sasha, is going through a difficult personal situation and uses the occasional slow morning to handle things — then works late to make it up.',
+        'The rollout is "mandatory" but managers have discretion to delay implementation "for operational reasons" by up to 60 days.'
+      ],
+      question: 'How do you handle the WorkWatch rollout?',
+      choices: [
+        { key: 'A', text: 'Implement it immediately and say nothing special. It\'s company policy; your team signed employment agreements.' },
+        { key: 'B', text: 'Implement it, but hold a team meeting first. Explain what it captures, what it doesn\'t, and give them two weeks to adjust their routines.' },
+        { key: 'C', text: 'Use the 60-day delay. Tell your team you\'re pushing back on the policy and buying time while you raise concerns through proper channels.' },
+        { key: 'D', text: 'Email your director objecting to the policy on ethical grounds, citing trust and privacy. Request a meeting before you implement anything.' }
+      ],
+      reflections: {
+        A: `<p>Silent implementation is technically compliant. But your team trusted you, and you knew something was coming that would affect them. Trust, once damaged by perceived surveillance, is very difficult to rebuild. Your team will notice when their screenshots start getting captured — and they\'ll remember that you didn\'t tell them it was coming.</p>
+            <p><strong>What carries forward:</strong> WorkWatch is live. Sasha\'s flexible schedule is now on the clock. Your team adjusted their behavior without being told why.</p>`,
+        B: `<p>Transparency before implementation treats your team as adults capable of adjusting. It doesn\'t change what the software does, but it changes the relationship. You\'re not hiding it. You\'re giving them agency within the constraint you\'ve been given. For Sasha specifically, this buys time to adjust before their routine is captured.</p>
+            <p><strong>What carries forward:</strong> Your team knows what WorkWatch does and had time to prepare. You implemented the policy honestly — and that\'s not nothing.</p>`,
+        C: `<p>Using the delay to raise concerns through proper channels is the institutional version of moral courage. You\'re not defying policy — you\'re using the legitimate space to push back before the decision is locked. This is how ethical change happens inside organizations: not by refusing to comply, but by slowing down the clock and making the case.</p>
+            <p><strong>What carries forward:</strong> Your team knows you fought for them. Whether it amounts to anything depends on what happens in those 60 days.</p>`,
+        D: `<p>Formally objecting on ethical grounds is the highest-stakes choice — and the one most consistent with giving voice to values. You might be told no. You might be noted as "difficult." But your objection creates a paper trail that this decision was questioned. Sometimes that\'s all that\'s possible inside a hierarchy. And sometimes it\'s enough to change minds.</p>
+            <p><strong>What carries forward:</strong> Your team knows you drew a line. Your director knows it too. The outcome is uncertain — but the record is clear.</p>`
+      }
+    },
+
+    fractured: {
+      num:   'Decision 3 of 4',
+      title: 'Eyes on a Divided Team',
+      branch: '<strong>Carrying forward:</strong> Three weeks into onboarding, Avery and Taylor compared notes. Taylor\'s salary came up. Avery knows about the gap. They haven\'t confronted you — but Sasha mentioned last week that Avery seems off, and the team has been quieter ever since.',
+      context: [
+        'IT sends an all-managers notice: StepUp is rolling out WorkWatch, a remote monitoring platform, for all departments by end of quarter. It will log keystrokes, application usage, and take random screenshots every 15 minutes.',
+        'Your timing couldn\'t be worse. Avery knows they make less than Taylor for the same role. They haven\'t said anything directly — but the atmosphere has shifted. Sasha pulled you aside last week: <em>"Is Avery okay? They seem off."</em>',
+        'Now WorkWatch arrives. Your team is already feeling unseen. You\'re about to add surveillance on top of it. The rollout is "mandatory" but you have discretion to delay up to 60 days.'
+      ],
+      question: 'How do you handle the WorkWatch rollout — with a team that\'s already watching you?',
+      choices: [
+        { key: 'A', text: 'Implement it immediately. You can\'t keep delaying hard messages — get it done and let the team adjust.' },
+        { key: 'B', text: 'Implement it, but hold a transparent team meeting first. You owe them honesty about WorkWatch, even if you\'re not ready to address the pay situation.' },
+        { key: 'C', text: 'Use the 60-day delay and tell the team you\'re pushing back. You don\'t fix the pay situation today — but you signal that you\'re paying attention.' },
+        { key: 'D', text: 'Email your director objecting on ethical grounds. A team already feeling unseen by a pay gap doesn\'t need literal surveillance added on top.' }
+      ],
+      reflections: {
+        A: `<p>Your team is already unsettled. Implementing surveillance without acknowledgment doesn\'t just add a monitoring tool — it confirms, for Avery, that management makes decisions affecting them without conversation. The pay gap created a fracture. WorkWatch, rolled out silently, may widen it past the point of repair.</p>
+            <p><strong>What carries forward:</strong> WorkWatch is live. Avery is watching it. Your team has now seen you make two consecutive decisions without talking to them first.</p>`,
+        B: `<p>You chose transparency on WorkWatch, even without being ready to address the salary situation. That\'s something. It\'s not everything — Avery\'s concern isn\'t really about screenshots. But honest communication is a foundation. You\'re still in debt on the equity issue, but you haven\'t added dishonesty to it.</p>
+            <p><strong>What carries forward:</strong> Your team knows what\'s coming and why. Avery is still owed a conversation — but at least this one happened.</p>`,
+        C: `<p>You bought time — and told your team you were fighting for them. In the context of a team already feeling unseen, that matters. The delay doesn\'t fix the salary gap, but it signals awareness. Whether you use those 60 days to address the underlying issue will define what kind of manager you are.</p>
+            <p><strong>What carries forward:</strong> Your team knows you pushed back. Avery is still waiting for something to change. The 60 days is a promise, whether or not you meant it that way.</p>`,
+        D: `<p>Objecting in this context is more than procedural courage — it\'s a recognition that your team\'s situation is already fragile. You can\'t undo the pay gap with a memo. But you can refuse to compound the damage. Your team, especially Avery, will eventually know you tried. After the pay decision, that may be necessary.</p>
+            <p><strong>What carries forward:</strong> You went on record against surveillance for a team already feeling watched. That\'s a redemptive move — if it lands.</p>`
+      }
+    }
+  },
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // SCENE 4  —  branches on Scene 3 choice
+  //   credible  : chose C or D (pushed back; Reese trusts you)
+  //   lastresort: chose A or B (implemented; Reese comes as a last resort)
+  // ════════════════════════════════════════════════════════════════════════════
+  4: {
+
+    credible: {
+      num:   'Decision 4 of 4',
+      title: 'The Ask',
+      branch: '<strong>Carrying forward:</strong> After your WorkWatch decision, word traveled. Reese mentioned last week that "people noticed you pushed back." Your team knows you\'re willing to draw lines with leadership. Now Reese has a request — and they\'re coming to you specifically because of what you did.',
+      context: [
+        'Reese stops you near the elevator, voice low. <em>"Can I ask you something? I want to invite someone from a union to talk to us — just informally. Just to understand what collective bargaining is and what rights we have. Is that something you\'d support?"</em>',
+        'You check with your director, who says: <em>"Tell them no. We don\'t want that energy here. And honestly, if this gets to HR, it won\'t look good for your team or your leadership."</em>',
+        'Under the National Labor Relations Act, employees have the right to discuss organizing during non-work hours. Your director\'s warning was not subtle. But Reese came to you because they trust you — trust built, decision by decision, over the last several months.'
+      ],
+      question: 'What do you tell Reese?',
+      choices: [
+        { key: 'A', text: 'Tell Reese "no" as directed. You\'ve already pushed back on WorkWatch — you can\'t keep drawing lines with leadership.' },
+        { key: 'B', text: 'Tell Reese you can\'t officially facilitate it, but also tell them truthfully that you can\'t stop them from organizing on their own time — and that they should look into their rights.' },
+        { key: 'C', text: 'Go back to your director and push back — tell them blocking organizing activity may cross a legal line and you need HR guidance before saying anything to Reese.' },
+        { key: 'D', text: 'Tell Reese you personally support them finding out their rights, and that you\'ll have nothing to say if something happens outside of work hours. They came to you because they trust you. Don\'t betray that.' }
+      ],
+      reflections: {
+        A: `<p>You\'ve spent this simulation making hard calls — and now, when someone trusts you enough to ask directly, you followed orders. Managers have to pick their battles — that\'s real. But Reese came to you <em>because you pushed back on WorkWatch.</em> Saying "no" here doesn\'t just affect Reese. It tells your team what the actual limit of your support looks like.</p>`,
+        B: `<p>The honest middle path. You didn\'t facilitate anything — but you didn\'t lie to Reese about what they\'re allowed to do. Telling someone their legal rights is meaningfully different from orchestrating the exercise of them. Your director may not see it that way. But the alternative — telling Reese they don\'t have rights they actually do — is harder to justify.</p>`,
+        C: `<p>Escalating to HR before acting protects everyone. Your director\'s instruction may have crossed a legal line — that\'s not your call alone, and it\'s HR\'s job to sort it out. This is what escalating appropriately looks like: not going over someone\'s head, but bringing in the right people before you make an irreversible mistake on their behalf.</p>`,
+        D: `<p>Reese came to you because they trust you. You built that trust — through Jordan\'s complaint, through the pay decisions, through WorkWatch. Telling Reese you\'ll look the other way while they exercise a legal right isn\'t just moral courage — it\'s the answer that\'s consistent with every choice that earned this conversation. The cost may be real. So is what you\'d be giving up if you said no.</p>`
+      }
+    },
+
+    lastresort: {
+      num:   'Decision 4 of 4',
+      title: 'The Ask',
+      branch: '<strong>Carrying forward:</strong> WorkWatch went live. Keystrokes, screenshots, application logs — running since Tuesday. The team Slack has been quieter. Sasha works rigid 9-to-5 blocks now. The flexibility that made remote work sustainable for them is gone. Your team is watching to see what you do next.',
+      context: [
+        'Reese stops you in the hallway. They look like they spent time deciding whether to come to you at all. <em>"I know this might be awkward given everything. But I want to ask — can I invite someone from a union to talk to us? Just informally. Just about what rights we have."</em>',
+        'You checked with your director this morning. The response: <em>"Tell them no. We don\'t want that energy here. If this gets to HR, it won\'t look good — for your team or your leadership."</em>',
+        'Under the NLRA, employees can discuss organizing on their own non-work time. Reese came to you anyway — not because they fully trust you, but because you\'re the manager and there\'s no one else. WorkWatch is running in the background. This is the moment they\'re measuring you by.'
+      ],
+      question: 'What do you tell Reese?',
+      choices: [
+        { key: 'A', text: 'Tell Reese "no" as directed. WorkWatch was already enough friction with leadership — you\'re not adding more.' },
+        { key: 'B', text: 'Tell Reese you can\'t officially facilitate it, but tell them truthfully that you can\'t stop them from organizing on their own time — and that they should look into their rights.' },
+        { key: 'C', text: 'Go back to your director and flag the legal exposure before you say anything to Reese. You don\'t want to be personally complicit in an NLRA violation.' },
+        { key: 'D', text: 'Tell Reese: after WorkWatch, you owe the team one. You\'ll say nothing if they organize outside of work hours. You can\'t undo the surveillance — but you can refuse to add this to it.' }
+      ],
+      reflections: {
+        A: `<p>You\'ve now implemented surveillance and blocked an organizing inquiry. Both decisions protected your relationship with leadership. Both had costs your team is living with. "No" here is defensible — and it\'s also a second consecutive decision that chose the institution over your people. That pattern has a name, and your team is beginning to recognize it.</p>`,
+        B: `<p>You didn\'t facilitate anything — but you told Reese the truth about their rights. That\'s something, especially after WorkWatch. It won\'t undo the surveillance rollout. But Reese came to you expecting to be shut down completely, and you gave them more than that. The honest middle path — and this time, it costs more to walk it.</p>`,
+        C: `<p>Flagging the legal risk to HR before acting protects you from personal liability for an NLRA violation — and puts the question where it belongs: on the institution. This is procedurally right. It\'s also a second consecutive escalation upward rather than a stand. Whether that consistency is institutional courage or institutional cover is worth sitting with.</p>`,
+        D: `<p>After WorkWatch, you needed a moment where your team could see you on their side. You took it. Telling Reese you\'ll look the other way while they exercise a legal right doesn\'t undo the surveillance rollout — but it\'s a signal that you know where you stand on the ledger. Your director may find out. It may cost you something. That\'s exactly what makes it mean something.</p>`
+      }
+    }
+  }
+
+}; // end SCENES
+
+// ─── ROUTING ─────────────────────────────────────────────────────────────────
+function getVariant(num) {
+  const c = state.choices;
+  if (num === 2) return (c[1] === 'A' || c[1] === 'B') ? 'clear'     : 'fallout';
+  if (num === 3) return (c[2] === 'B' || c[2] === 'D') ? 'united'    : 'fractured';
+  if (num === 4) return (c[3] === 'C' || c[3] === 'D') ? 'credible'  : 'lastresort';
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function renderScene(num) {
+  const variant = (num === 1) ? null : getVariant(num);
+  if (variant) state.variants[num] = variant;
+  const d = (num === 1) ? SCENES[1] : SCENES[num][variant];
+  const isLast = (num === 4);
+
+  const ctxHTML = d.context.map(p => `<p>${p}</p>`).join('');
+  const choicesHTML = d.choices.map(ch =>
+    `<button class="choice-btn" data-choice="${ch.key}" onclick="selectChoice(this,${num})">
+       <span class="choice-label">${ch.key}</span>${ch.text}
+     </button>`
+  ).join('');
+
+  const nextBtn = isLast
+    ? `<button class="next-btn" onclick="showCertificate()">Get Your Completion Code &rarr;</button>`
+    : `<button class="next-btn" onclick="renderScene(${num + 1})">Next Decision &rarr;</button>`;
+
+  const confirmLabel = isLast ? 'Complete Simulation &rarr;' : 'Confirm Decision &rarr;';
+
+  const html = `
+    <div>
+      ${d.branch ? `<div class="branch-tag">${d.branch}</div>` : ''}
+      <div class="scene-num">${d.num}</div>
+      <div class="scene-title">${d.title}</div>
+      <div class="context-block">${ctxHTML}</div>
+      <div class="decision-block">
+        <div class="decision-label">The Question</div>
+        <div class="decision-text">${d.question}</div>
+        ${choicesHTML}
+        <button class="confirm-btn" id="confirm-btn" onclick="confirmChoice(${num})">${confirmLabel}</button>
+        <div class="reflection" id="reflection">
+          <div class="reflection-label">What Just Happened</div>
+          <div id="reflection-text"></div>
+          ${nextBtn}
+        </div>
+      </div>
+    </div>`;
+
+  const container = document.getElementById('scene-container');
+  container.innerHTML = html;
+  // re-trigger fade animation
+  container.style.animation = 'none';
+  void container.offsetWidth;
+  container.style.animation = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function selectChoice(btn, num) {
+  document.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  state.choices[num] = btn.dataset.choice;
+  document.getElementById('confirm-btn').classList.add('show');
+}
+
+function confirmChoice(num) {
+  const choice  = state.choices[num];
+  const variant = (num === 1) ? null : state.variants[num];
+  const d = (num === 1) ? SCENES[1] : SCENES[num][variant];
+
+  document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+  document.getElementById('confirm-btn').style.display = 'none';
+  document.getElementById('reflection-text').innerHTML = d.reflections[choice];
+  document.getElementById('reflection').classList.add('show');
+  updateProgress((num / 4) * 100);
+}
+
+// ─── CERTIFICATE ─────────────────────────────────────────────────────────────
+const signals = {
+  1: { A: 'Escalated immediately to HR',
+       B: 'Heard Jordan first, then escalated',
+       C: 'Protected Marcus — framed as misunderstanding',
+       D: 'Documented and waited' },
+  2: { A: 'Paid what they asked — gap created',
+       B: 'Equal pay at midpoint',
+       C: 'Partial compromise — smaller gap',
+       D: 'Full equity — top rate for both' },
+  3: { A: 'Silent compliance',
+       B: 'Transparent implementation',
+       C: 'Used 60-day delay to push back',
+       D: 'Formally objected on ethical grounds' },
+  4: { A: "Followed director's order",
+       B: "Neutral — informed Reese of their rights",
+       C: 'Escalated to HR before acting',
+       D: "Personally supported Reese's rights" }
+};
+const sceneLabels = { 1: 'The Complaint', 2: 'Two Hires', 3: 'WorkWatch Rollout', 4: 'The Union Ask' };
+
+function showCertificate() {
+  document.getElementById('scene-container').innerHTML = '';
+  document.getElementById('certificate').classList.add('active');
+
+  const c = [1,2,3,4].map(i => state.choices[i] || 'X').join('');
+  const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+  document.getElementById('cert-code-display').textContent = `SIM4-AR-${c}-${suffix}`;
+
+  const table = document.getElementById('summary-table');
+  for (let i = 1; i <= 4; i++) {
+    const ch = state.choices[i] || '—';
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${sceneLabels[i]}</td>
+                     <td style="color:var(--red);font-weight:700;">${ch}</td>
+                     <td>${signals[i][ch] || '—'}</td>`;
+    table.appendChild(row);
+  }
+  updateProgress(100);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function copyCode() {
+  const code = document.getElementById('cert-code-display').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy Code', 2000);
+  });
+}
+
+function updateProgress(pct) {
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+// ─── HISTORY ─────────────────────────────────────────────────────────────────
+function loadHistory() {
+  const code = document.getElementById('sim3-code').value.trim().toUpperCase();
+  let msg = '';
+  if (code.startsWith('SIM3-AR-')) {
+    const c1 = (code.split('-')[2] || '')[0];
+    if (c1 === 'A')
+      msg = `<strong>Your code shows Alex took the principled path in Vietnam</strong> — reporting the compliance issue through channels and refusing the facilitation payment. Your team has heard through the grapevine that you don't cut corners. That reputation precedes you today.`;
+    else if (c1 === 'C' || c1 === 'D')
+      msg = `<strong>Your code shows Alex made difficult compromises in Vietnam.</strong> You got the deal done — but some of those decisions still sit with you. Today you have four fresh chances. What kind of manager will you choose to be?`;
+    else
+      msg = `<strong>Your code shows Alex navigated the Vietnam expansion with care</strong> — balancing pressure, culture, and principle. You've been a manager for eight months. Your team respects you. Today tests whether you can hold that line.`;
+  } else {
+    msg = `<strong>Welcome to StepUp, Alex Rivera.</strong> This is your fourth year — your first full year as a manager. Whatever happened in those earlier simulations, today is its own test.`;
+  }
+  document.getElementById('continuity-text').innerHTML = msg;
+  document.getElementById('continuity-badge').style.display = 'block';
+  document.getElementById('code-section').style.display = 'none';
+  renderScene(1);
+}
+
+function skipHistory() {
+  document.getElementById('code-section').style.display = 'none';
+  renderScene(1);
+}
+</script>
+</body>
+</html>
